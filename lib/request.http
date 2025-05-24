@@ -1,0 +1,13 @@
+### Consultar moedas suportadas
+GET https://cruiserdev.lince.com.br/academy/moedas
+Accept: application/json
+
+### Converter moedas
+POST https://cruiserdev.lince.com.br/academy/converter
+Accept: application/json
+Content-Type: application/json
+
+{
+  "de": "USD",
+  "para": "BRL"
+}
