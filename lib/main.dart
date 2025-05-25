@@ -1,13 +1,23 @@
+import 'package:ferramentas/controller/providers/calculator_provider.dart';
 import 'package:ferramentas/view/pages/calculator_page.dart';
 import 'package:ferramentas/view/pages/currency_conversion_page.dart';
 import 'package:ferramentas/view/pages/home_page.dart';
 import 'package:ferramentas/view/pages/unit_conversion_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'core/constants/theme.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => CalculatorProvider()),
+      ],
+
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
