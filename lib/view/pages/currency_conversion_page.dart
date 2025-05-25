@@ -1,7 +1,15 @@
-import 'package:country_flags/country_flags.dart';
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-enum Currency { brl, eur, usd }
+import 'package:country_flags/country_flags.dart';
+import 'package:ferramentas/view/pages/unit_conversion_page.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
+const String getCurrenciesUrl =
+    'https://cruiserdev.lince.com.br/academy/moedas';
+const String convertCurrencyUrl =
+    'https://cruiserdev.lince.com.br/academy/converter';
 
 class CurrencyConversionPage extends StatefulWidget {
   const CurrencyConversionPage({super.key});
@@ -11,24 +19,112 @@ class CurrencyConversionPage extends StatefulWidget {
 }
 
 class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
-  final formKey = GlobalKey<FormState>();
+  /// List of available [currencies]
+  final List<String> currencies = [];
 
-  /// default conversion types
-  Currency fromCurrency = Currency.brl;
-  Currency toCurrency = Currency.usd;
+  /// List of [DropdownMenuItem] to be used in the [DropdownButton] to change the currencies
+  List<DropdownMenuItem<String>> items = [];
 
-  /// default conversion values
-  var quantityToConvert = 0;
-  var quantityConverted = 0;
+  bool isLoading = false;
 
-  /// default result value
-  var resultString = '';
+  String fromCurrency = '';
+  String toCurrency = '';
 
-  /// text controller for the value input
+  /// Default conversion values
+  double quantityToConvert = 0;
+  double quantityConverted = 0;
+
+  /// Text controller for the value input
   final controller = TextEditingController();
 
-  void convert() {
+  /// Loads the available currencies from the API
+  void loadCurrencies() async {
+    setState(() {
+      isLoading = true;
+    });
 
+    try {
+      final response = await http.get(Uri.parse(getCurrenciesUrl));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as List<dynamic>;
+
+        for (final currency in body) {
+          currencies.add(currency);
+        }
+
+        loadCurrenciesMenuItems();
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  /// Converts the currency via API request (post)
+  void convertCurrency() async {
+    try {
+      final response = await http.post(
+        Uri.parse(convertCurrencyUrl),
+        body: jsonEncode({'de': fromCurrency, 'para': toCurrency}),
+      );
+
+      if (response.statusCode == 200) {
+        final double valueFactor = jsonDecode(response.body)['conversao'];
+
+        setState(() {
+          quantityConverted = quantityToConvert * valueFactor;
+        });
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  /// After the currencies are loaded, the [items] list is generated based
+  /// on the currencies list
+  void loadCurrenciesMenuItems() {
+    items = List.generate(currencies.length, (index) {
+      final String currency = currencies[index];
+      return DropdownMenuItem(value: currency, child: Text(currency));
+    });
+  }
+
+  /// Set default values for the currencies
+  void setDefaultValues() {
+    if (currencies.isNotEmpty) {
+      fromCurrency = currencies.first;
+      toCurrency = currencies.length > 1 ? currencies[1] : currencies.first;
+    }
+  }
+
+  /// Swap the currencies
+  void swapCurrencies() {
+    setState(() {
+      final tempCurrency = toCurrency;
+      toCurrency = fromCurrency;
+      fromCurrency = tempCurrency;
+    });
+  }
+
+  String getFormattedCurrency(double value, String currencyCode) {
+    final formatter = NumberFormat.simpleCurrency(name: currencyCode);
+    return formatter.format(value);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadCurrencies();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -46,246 +142,370 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
         ),
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white,
-          ),
+      /// [SingleChildScrollView] to avoid overflow then the text field is focused
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
 
-          height: 550,
-          width: 500,
+          /// Main container
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.white,
+            ),
 
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Quantia',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
+            height: 550,
+            width: 500,
 
-                TextFormField(
-                  key: formKey,
-                  controller: controller,
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Builder(
+                builder: (context) {
+                  /// Shows a [CircularProgressIndicator] while the [loadCurrencies]
+                  /// method is still executing
+                  if (isLoading) {
+                    return Center(child: CircularProgressIndicator());
+                  }
 
-                  keyboardType: TextInputType.number,
-
-                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
-
-                  onChanged: (value) {
-
-                  },
-
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    suffix: SizedBox(
-                      width: 150,
-                      height: 25,
-
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          /// Country flag
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: CountryFlag.fromCurrencyCode(
-                              fromCurrency.name,
-                            ),
-                          ),
-
-                          /// Select currency
-                          DropdownButton<Currency>(
-                            /// Currency name
-                            underline: Text(
-                              fromCurrency.name.toUpperCase(),
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            // underline: Container(color: Colors.transparent),
-                            items: [
-                              DropdownMenuItem(
-                                value: Currency.brl,
-                                child: Text('BRL'),
-                              ),
-                              DropdownMenuItem(
-                                value: Currency.eur,
-                                child: Text('EUR'),
-                              ),
-                              DropdownMenuItem(
-                                value: Currency.usd,
-                                child: Text('USD'),
-                              ),
-                            ],
-
-                            onChanged: (value) {
-                              setState(() {
-                                if (value != null) {
-                                  fromCurrency = value;
-                                }
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 50),
-                  child: InkWell(
-                    /// change currencies
-                    onTap: () {},
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.arrow_upward,
-                          color: Theme.of(context).primaryColorLight,
-                          size: 50,
-                        ),
-                        Icon(
-                          Icons.arrow_downward,
-                          color: Theme.of(context).primaryColorLight,
-                          size: 50,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                Text(
-                  'Converter para',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-
-                Container(
-                  height: 68,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(width: 1, color: Colors.black54),
-                  ),
-
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  /// Main column
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(quantityConverted.toStringAsFixed(2)),
+                      Text(
+                        'Quantia',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
                       ),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          /// Country flag
-                          CountryFlag.fromCurrencyCode(toCurrency.name),
+                      /// Text field to enter the value
+                      TextFormField(
+                        controller: controller,
 
-                          const SizedBox(width: 10),
+                        /// Allows only numbers
+                        keyboardType: TextInputType.number,
 
-                          /// Select currency
-                          DropdownButton<Currency>(
-                            /// Currency name
-                            underline: Text(
-                              toCurrency.name.toUpperCase(),
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                        /// Pop the keyboard when tap outside
+                        onTapOutside: (_) => FocusScope.of(context).unfocus(),
+
+                        /// The currency is converted then the user interacts
+                        /// with the text field
+                        onChanged: (value) {
+                          setState(() {
+                            quantityToConvert = double.tryParse(value) ?? 0;
+                          });
+
+                          convertCurrency();
+                        },
+
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+
+                          /// This is needed for the label to keep visible
+                          /// even if the text field is not focused
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          suffix: SizedBox(
+                            width: 150,
+                            height: 35,
+
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                /// Country flag
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 10),
+                                  child: CountryFlag.fromCurrencyCode(
+                                    fromCurrency.toUpperCase(),
+                                  ),
+                                ),
+
+                                /// Dropdown button
+                                CustomDropdownButton(
+                                  items: items,
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      if (value != null) {
+                                        fromCurrency = value;
+                                        convertCurrency();
+                                      }
+                                    });
+                                  },
+                                  label: fromCurrency,
+                                ),
+                              ],
                             ),
-                            items: [
-                              DropdownMenuItem(
-                                value: Currency.brl,
-                                child: Text('BRL'),
+                          ),
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 50),
+                        child: InkWell(
+                          /// change currencies
+                          onTap: () {
+                            /// swap the currencies and automatically converts them
+                            swapCurrencies();
+                            convertCurrency();
+                          },
+
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.arrow_upward,
+                                color: Theme.of(context).primaryColorLight,
+                                size: 50,
                               ),
-                              DropdownMenuItem(
-                                value: Currency.eur,
-                                child: Text('EUR'),
-                              ),
-                              DropdownMenuItem(
-                                value: Currency.usd,
-                                child: Text('USD'),
+                              Icon(
+                                Icons.arrow_downward,
+                                color: Theme.of(context).primaryColorLight,
+                                size: 50,
                               ),
                             ],
-
-                            onChanged: (value) {
-                              setState(() {
-                                if (value != null) {
-                                  toCurrency = value;
-                                }
-                              });
-                            },
                           ),
-                        ],
+                        ),
+                      ),
+
+                      Text(
+                        'Converter para',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+
+                      Container(
+                        height: 67,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(width: 1, color: Colors.black54),
+                        ),
+
+                        /// Row that shows the info about the converted currency
+                        /// (conversion and country flag)
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Text(quantityConverted.toStringAsFixed(2)),
+                            ),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                /// Country flag
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: CountryFlag.fromCurrencyCode(
+                                    toCurrency,
+                                  ),
+                                ),
+
+                                /// Dropdown button
+                                CustomDropdownButton(
+                                  label: toCurrency,
+                                  items: items,
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      if (value != null) {
+                                        toCurrency = value;
+                                        convertCurrency();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      /// Conversion result text
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 30),
+                          child: Column(
+                            children: [
+                              Builder(
+                                builder: (context) {
+                                  String formattedFromCurrency =
+                                      getFormattedCurrency(
+                                        quantityToConvert,
+                                        fromCurrency,
+                                      );
+                                  String formattedToCurrency =
+                                      getFormattedCurrency(
+                                        quantityConverted,
+                                        toCurrency,
+                                      );
+
+                                  String fromCurrencyText =
+                                      '$formattedFromCurrency $fromCurrency';
+                                  String toCurrencyText =
+                                      '$formattedToCurrency $toCurrency';
+
+                                  return Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: '$fromCurrencyText = ',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 22,
+                                          ),
+                                        ),
+
+                                        TextSpan(
+                                          text: toCurrencyText,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 22,
+                                            color:
+                                                Theme.of(
+                                                  context,
+                                                ).primaryColorLight,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
+                                child: DateSpan(),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                ),
-
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 30),
-                    child: Builder(
-                      builder: (context) {
-                        String fromCurrencyPrefix = '';
-                        String toCurrencyPrefix = '';
-
-                        switch (fromCurrency) {
-                          case Currency.brl:
-                            fromCurrencyPrefix = 'R\$';
-                            break;
-                          case Currency.eur:
-                            fromCurrencyPrefix = '€';
-                            break;
-                          case Currency.usd:
-                            fromCurrencyPrefix = '\$';
-                            break;
-                        }
-
-                        switch (toCurrency) {
-                          case Currency.brl:
-                            toCurrencyPrefix = 'R\$';
-                            break;
-                          case Currency.eur:
-                            toCurrencyPrefix = '€';
-                            break;
-                          case Currency.usd:
-                            toCurrencyPrefix = '\$';
-                            break;
-                        }
-
-                        String fromCurrencyText =
-                            '$fromCurrencyPrefix $quantityToConvert ${fromCurrency.name.toUpperCase()}';
-                        String toCurrencyText =
-                            '$toCurrencyPrefix $quantityConverted ${toCurrency.name.toUpperCase()}';
-
-                        return Text(
-                          '$fromCurrencyText = $toCurrencyText',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 25,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// This widget is a [DropdownButton] that holds custom values given in the
+/// constructor
+///
+/// This widget is intended to be used to list all the currencies available
+/// from the API, although it can be implemented in the [UnitConversionPage]
+/// as well
+class CustomDropdownButton extends StatelessWidget {
+  const CustomDropdownButton({
+    super.key,
+    required this.items,
+    required this.onChanged,
+    required this.label,
+  });
+
+  final List<DropdownMenuItem<String>> items;
+  final void Function(String?) onChanged;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: DropdownButton<String>(
+        items: items,
+        onChanged: onChanged,
+
+        /// Currency name
+        underline: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DateSpan extends StatefulWidget {
+  const DateSpan({super.key});
+
+  @override
+  State<DateSpan> createState() => _DateSpanState();
+}
+
+class _DateSpanState extends State<DateSpan> {
+  @override
+  Widget build(BuildContext context) {
+    final dateFormat = DateFormat('dd/mm/yyyy');
+    final hourFormat = DateFormat('HH:mm');
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: 'Cotação feita em ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              fontSize: 15,
+            ),
+          ),
+
+          TextSpan(
+            text: dateFormat.format(DateTime.now()),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColorLight,
+              fontSize: 15,
+            ),
+          ),
+
+          TextSpan(
+            text: ' às ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              fontSize: 15,
+            ),
+          ),
+
+          TextSpan(
+            text: hourFormat.format(DateTime.now()),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColorLight,
+              fontSize: 15,
+            ),
+          ),
+
+          TextSpan(
+            text: ' UTC',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              fontSize: 15,
+            ),
+          ),
+        ],
       ),
     );
   }
