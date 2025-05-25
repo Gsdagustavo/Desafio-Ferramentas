@@ -1,42 +1,12 @@
 import 'package:flutter/material.dart';
 
-enum DistanceUnit { millimeters, inches, centimeters, meters, kilometers }
+enum DistanceUnit { centimeters, meters, kilometers }
 
 enum WeightUnit { kilograms, pounds, grams }
 
 enum TemperatureUnit { celsius, fahrenheit, kelvin }
 
 enum Type { distance, weight, temperature }
-
-abstract class TemperatureConverter {
-  TemperatureUnit unitType;
-
-  TemperatureConverter(this.unitType);
-
-  double celsiusToFahrenheit(double celsius) {
-    return ((9 / 5) * celsius) + 32;
-  }
-
-  double celsiusToKelvin(double celsius) {
-    return celsius + 273.15;
-  }
-
-  double fahrenheitToCelsius(double fahrenheit) {
-    return ((5 / 9) * (fahrenheit - 32));
-  }
-
-  double fahrenheitToKelvin(double fahrenheit) {
-    return (fahrenheit + 459.67) * (5 / 9);
-  }
-
-  double kelvinToCelsius(double kelvin) {
-    return kelvin - 273.15;
-  }
-
-  double kelvinToFahrenheit(double kelvin) {
-    return 1.8 * (kelvin - 273.15) + 32;
-  }
-}
 
 class UnitConversionPage extends StatefulWidget {
   const UnitConversionPage({super.key});
@@ -113,7 +83,7 @@ class _UnitConversionPageState extends State<UnitConversionPage> {
                   ),
                 ),
 
-                const SizedBox(height: 15,),
+                const SizedBox(height: 15),
 
                 Container(
                   height: 50,

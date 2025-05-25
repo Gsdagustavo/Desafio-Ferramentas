@@ -1,3 +1,4 @@
+import 'package:ferramentas/view/pages/calculator_page.dart';
 import 'package:ferramentas/view/pages/currency_conversion_page.dart';
 import 'package:ferramentas/view/pages/home_page.dart';
 import 'package:ferramentas/view/pages/unit_conversion_page.dart';
@@ -6,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'core/constants/theme.dart';
 
 void main() {
-
   runApp(const MyApp());
 }
 
@@ -28,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/': (_) => const HomePage(),
         '/currencyConversionPage': (_) => const CurrencyConversionPage(),
         '/unitConversionPage': (_) => const UnitConversionPage(),
+        '/calculatorPage': (_) => const CalculatorPage(),
       },
 
       initialRoute: '/',

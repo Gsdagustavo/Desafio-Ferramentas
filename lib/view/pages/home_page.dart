@@ -108,18 +108,21 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 50),
 
             /// Calculadora
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColorLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
+            InkWell(
+              onTap: () => Navigator.pushNamed(context, '/calculatorPage'),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColorLight,
+                  borderRadius: BorderRadius.circular(20),
+                ),
 
-              child: Row(
-                // mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Image.asset('assets/calculadora.png', scale: 3),
-                  Text('Calculadora', style: textStyle),
-                ],
+                child: Row(
+                  // mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Image.asset('assets/calculadora.png', scale: 3),
+                    Text('Calculadora', style: textStyle),
+                  ],
+                ),
               ),
             ),
           ],
