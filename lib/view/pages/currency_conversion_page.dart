@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../widgets/base_app_bar.dart';
+
 const String getCurrenciesUrl =
     'https://cruiserdev.lince.com.br/academy/moedas';
 const String convertCurrencyUrl =
@@ -132,15 +134,7 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
 
-      appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).primaryColorDark,
-        title: Text(
-          'Conversor de moedas',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
+      appBar: BaseAppBar(title: 'Conversor de moedas'),
 
       /// [SingleChildScrollView] to avoid overflow then the text field is focused
       body: SingleChildScrollView(
