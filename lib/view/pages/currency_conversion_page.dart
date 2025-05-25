@@ -6,12 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../../core/constants/urls.dart';
 import '../widgets/base_app_bar.dart';
-
-const String getCurrenciesUrl =
-    'https://cruiserdev.lince.com.br/academy/moedas';
-const String convertCurrencyUrl =
-    'https://cruiserdev.lince.com.br/academy/converter';
 
 class CurrencyConversionPage extends StatefulWidget {
   const CurrencyConversionPage({super.key});
