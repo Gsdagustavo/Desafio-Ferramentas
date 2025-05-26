@@ -1,129 +1,14 @@
-import 'dart:convert';
-
 import 'package:country_flags/country_flags.dart';
+import 'package:ferramentas/controller/providers/currency_provider.dart';
 import 'package:ferramentas/view/pages/unit_conversion_page.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-import '../../core/constants/urls.dart';
 import '../widgets/base_app_bar.dart';
 
-class CurrencyConversionPage extends StatefulWidget {
+class CurrencyConversionPage extends StatelessWidget {
   const CurrencyConversionPage({super.key});
-
-  @override
-  State<CurrencyConversionPage> createState() => _CurrencyConversionPageState();
-}
-
-class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
-  /// List of available [currencies]
-  final List<String> currencies = [];
-
-  /// List of [DropdownMenuItem] to be used in the [DropdownButton] to change the currencies
-  List<DropdownMenuItem<String>> items = [];
-
-  bool isLoading = false;
-
-  String fromCurrency = '';
-  String toCurrency = '';
-
-  /// Default conversion values
-  double quantityToConvert = 0;
-  double quantityConverted = 0;
-
-  /// Text controller for the value input
-  final controller = TextEditingController();
-
-  /// Loads the available currencies from the API
-  void loadCurrencies() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final response = await http.get(Uri.parse(getCurrenciesUrl));
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as List<dynamic>;
-
-        for (final currency in body) {
-          currencies.add(currency);
-        }
-
-        loadCurrenciesMenuItems();
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  /// Converts the currency via API request (post)
-  void convertCurrency() async {
-    try {
-      final response = await http.post(
-        Uri.parse(convertCurrencyUrl),
-        body: jsonEncode({'de': fromCurrency, 'para': toCurrency}),
-      );
-
-      if (response.statusCode == 200) {
-        final double valueFactor = jsonDecode(response.body)['conversao'];
-
-        setState(() {
-          quantityConverted = quantityToConvert * valueFactor;
-        });
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  /// After the currencies are loaded, the [items] list is generated based
-  /// on the currencies list
-  void loadCurrenciesMenuItems() {
-    items = List.generate(currencies.length, (index) {
-      final String currency = currencies[index];
-      return DropdownMenuItem(value: currency, child: Text(currency));
-    });
-  }
-
-  /// Set default values for the currencies
-  void setDefaultValues() {
-    if (currencies.isNotEmpty) {
-      fromCurrency = currencies.first;
-      toCurrency = currencies.length > 1 ? currencies[1] : currencies.first;
-    }
-  }
-
-  /// Swap the currencies
-  void swapCurrencies() {
-    setState(() {
-      final tempCurrency = toCurrency;
-      toCurrency = fromCurrency;
-      fromCurrency = tempCurrency;
-    });
-  }
-
-  String getFormattedCurrency(double value, String currencyCode) {
-    final formatter = NumberFormat.simpleCurrency(name: currencyCode);
-    return formatter.format(value);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    loadCurrencies();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,11 +34,11 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
 
             child: Padding(
               padding: const EdgeInsets.all(20.0),
-              child: Builder(
-                builder: (context) {
+              child: Consumer<CurrencyProvider>(
+                builder: (context, currencyProvider, child) {
                   /// Shows a [CircularProgressIndicator] while the [loadCurrencies]
                   /// method is still executing
-                  if (isLoading) {
+                  if (currencyProvider.isLoading) {
                     return Center(child: CircularProgressIndicator());
                   }
 
@@ -172,7 +57,7 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
 
                       /// Text field to enter the value
                       TextFormField(
-                        controller: controller,
+                        controller: currencyProvider.controller,
 
                         /// Allows only numbers
                         keyboardType: TextInputType.number,
@@ -183,11 +68,10 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                         /// The currency is converted then the user interacts
                         /// with the text field
                         onChanged: (value) {
-                          setState(() {
-                            quantityToConvert = double.tryParse(value) ?? 0;
-                          });
+                          currencyProvider.quantityToConvert =
+                              double.tryParse(value) ?? 0;
 
-                          convertCurrency();
+                          currencyProvider.convertCurrency();
                         },
 
                         decoration: InputDecoration(
@@ -210,22 +94,20 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                                 Padding(
                                   padding: const EdgeInsets.only(right: 10),
                                   child: CountryFlag.fromCurrencyCode(
-                                    fromCurrency.toUpperCase(),
+                                    currencyProvider.fromCurrency.toUpperCase(),
                                   ),
                                 ),
 
                                 /// Dropdown button
                                 CustomDropdownButton(
-                                  items: items,
+                                  items: currencyProvider.items,
                                   onChanged: (String? value) {
-                                    setState(() {
-                                      if (value != null) {
-                                        fromCurrency = value;
-                                        convertCurrency();
-                                      }
-                                    });
+                                    if (value != null) {
+                                      currencyProvider.fromCurrency = value;
+                                      currencyProvider.convertCurrency();
+                                    }
                                   },
-                                  label: fromCurrency,
+                                  label: currencyProvider.fromCurrency,
                                 ),
                               ],
                             ),
@@ -239,8 +121,8 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                           /// change currencies
                           onTap: () {
                             /// swap the currencies and automatically converts them
-                            swapCurrencies();
-                            convertCurrency();
+                            currencyProvider.swapCurrencies();
+                            currencyProvider.convertCurrency();
                           },
 
                           child: Row(
@@ -287,7 +169,10 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                               ),
-                              child: Text(quantityConverted.toStringAsFixed(2)),
+                              child: Text(
+                                currencyProvider.quantityConverted
+                                    .toStringAsFixed(2),
+                              ),
                             ),
 
                             Row(
@@ -298,21 +183,19 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                                 Padding(
                                   padding: const EdgeInsets.only(right: 12),
                                   child: CountryFlag.fromCurrencyCode(
-                                    toCurrency,
+                                    currencyProvider.toCurrency,
                                   ),
                                 ),
 
                                 /// Dropdown button
                                 CustomDropdownButton(
-                                  label: toCurrency,
-                                  items: items,
+                                  label: currencyProvider.toCurrency,
+                                  items: currencyProvider.items,
                                   onChanged: (String? value) {
-                                    setState(() {
-                                      if (value != null) {
-                                        toCurrency = value;
-                                        convertCurrency();
-                                      }
-                                    });
+                                    if (value != null) {
+                                      currencyProvider.toCurrency = value;
+                                      currencyProvider.convertCurrency();
+                                    }
                                   },
                                 ),
                               ],
@@ -330,20 +213,20 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                               Builder(
                                 builder: (context) {
                                   String formattedFromCurrency =
-                                      getFormattedCurrency(
-                                        quantityToConvert,
-                                        fromCurrency,
+                                      currencyProvider.getFormattedCurrency(
+                                        currencyProvider.quantityToConvert,
+                                        currencyProvider.fromCurrency,
                                       );
-                                  String formattedToCurrency =
-                                      getFormattedCurrency(
-                                        quantityConverted,
-                                        toCurrency,
+                                  String formattedToCurrency = currencyProvider
+                                      .getFormattedCurrency(
+                                        currencyProvider.quantityConverted,
+                                        currencyProvider.toCurrency,
                                       );
 
                                   String fromCurrencyText =
-                                      '$formattedFromCurrency $fromCurrency';
+                                      '$formattedFromCurrency ${currencyProvider.fromCurrency}';
                                   String toCurrencyText =
-                                      '$formattedToCurrency $toCurrency';
+                                      '$formattedToCurrency ${currencyProvider.toCurrency}';
 
                                   return Text.rich(
                                     TextSpan(
@@ -435,14 +318,9 @@ class CustomDropdownButton extends StatelessWidget {
   }
 }
 
-class DateSpan extends StatefulWidget {
+class DateSpan extends StatelessWidget {
   const DateSpan({super.key});
 
-  @override
-  State<DateSpan> createState() => _DateSpanState();
-}
-
-class _DateSpanState extends State<DateSpan> {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd/mm/yyyy');
