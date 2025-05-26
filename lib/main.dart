@@ -1,4 +1,5 @@
 import 'package:ferramentas/controller/providers/calculator_provider.dart';
+import 'package:ferramentas/controller/providers/currency_provider.dart';
 import 'package:ferramentas/view/pages/calculator_page.dart';
 import 'package:ferramentas/view/pages/currency_conversion_page.dart';
 import 'package:ferramentas/view/pages/home_page.dart';
@@ -13,6 +14,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => CalculatorProvider()),
+        ChangeNotifierProvider(create: (context) => CurrencyProvider()),
       ],
 
       child: const MyApp(),
