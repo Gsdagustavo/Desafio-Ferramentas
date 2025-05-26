@@ -1,14 +1,12 @@
-import 'dart:convert';
-
+import 'package:ferramentas/controller/services/currency_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
-import '../../core/constants/urls.dart';
-
 class CurrencyProvider with ChangeNotifier {
+  final CurrencyService currencyService;
+
   /// List of available [currencies]
-  final List<String> currencies = [];
+  final List<dynamic> currencies = [];
 
   /// List of [DropdownMenuItem] to be used in the [DropdownButton] to change the currencies
   List<DropdownMenuItem<String>> items = [];
@@ -25,7 +23,7 @@ class CurrencyProvider with ChangeNotifier {
   /// Text controller for the value input
   final controller = TextEditingController();
 
-  CurrencyProvider() {
+  CurrencyProvider({this.currencyService = const CurrencyService()}) {
     _init();
   }
 
@@ -36,19 +34,13 @@ class CurrencyProvider with ChangeNotifier {
   /// Loads the available currencies from the API
   Future<void> loadCurrencies() async {
     isLoading = true;
+    notifyListeners();
 
     try {
-      final response = await http.get(Uri.parse(getCurrenciesUrl));
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as List<dynamic>;
-
-        for (final currency in body) {
-          currencies.add(currency);
-        }
-
-        loadCurrenciesMenuItems();
-      }
+      final loadedCurrencies = await currencyService.fetchCurrencies();
+      currencies.clear();
+      currencies.addAll(loadedCurrencies);
+      loadCurrenciesMenuItems();
     } catch (e) {
       debugPrint(e.toString());
     } finally {
@@ -58,20 +50,19 @@ class CurrencyProvider with ChangeNotifier {
   }
 
   /// Converts the currency via API request (post)
-  void convertCurrency() async {
+  Future<void> convertCurrency() async {
     try {
-      final response = await http.post(
-        Uri.parse(convertCurrencyUrl),
-        body: jsonEncode({'de': fromCurrency, 'para': toCurrency}),
+      final valueFactor = await currencyService.convertCurrency(
+        fromCurrency: fromCurrency,
+        toCurrency: toCurrency,
       );
 
-      if (response.statusCode == 200) {
-        final double valueFactor = jsonDecode(response.body)['conversao'];
+      quantityConverted = quantityToConvert * valueFactor;
 
-        quantityConverted = quantityToConvert * valueFactor;
-      }
     } catch (e) {
       debugPrint(e.toString());
+      notifyListeners();
+    } finally {
       notifyListeners();
     }
   }
