@@ -29,7 +29,6 @@ class CurrencyConversionPage extends StatelessWidget {
               color: Colors.white,
             ),
 
-            height: 550,
             width: 500,
 
             child: Padding(
@@ -44,6 +43,7 @@ class CurrencyConversionPage extends StatelessWidget {
 
                   /// Main column
                   return Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
